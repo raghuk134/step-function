@@ -62,3 +62,10 @@
     Environment = "prod"
   }
 }
+
+environment {
+    variables = {
+      DB_USERNAME = var.db_username
+      HOSTNAME    = var.hostname
+    }
+  }
