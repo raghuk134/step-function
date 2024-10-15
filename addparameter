@@ -1,50 +1,73 @@
+provider "aws" {
+  region = "us-east-1"
+}
+
+resource "aws_iam_role" "step_function_role" {
+  name = "step_function_role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Action    = "sts:AssumeRole",
+        Effect    = "Allow",
+        Principal = {
+          Service = "states.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_policy" "step_function_policy" {
+  name = "step_function_policy"
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Action = [
+          "lambda:InvokeFunction"
+        ],
+        Effect   = "Allow",
+        Resource = [
+          "arn:aws:lambda:us-east-1:460188324144:function:first_lambda_function",
+          "arn:aws:lambda:us-east-1:460188324144:function:second_lambda_function"
+        ]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "attach_policy" {
+  role       = aws_iam_role.step_function_role.name
+  policy_arn = aws_iam_policy.step_function_policy.arn
+}
+
 resource "aws_sfn_state_machine" "ssre_pipeline" {
   name     = "SSRE_Contract_Ingestion_Pipeline"
   role_arn = aws_iam_role.step_function_role.arn
 
   definition = <<DEFINITION
   {
-    "Comment": "Example SSRE Contract Ingestion Pipeline with two Lambda functions",
-    "StartAt": "ProcessRecords",
+    "Comment": "SSRE Contract Ingestion Pipeline with Payload passed to Lambda functions",
+    "StartAt": "FirstLambda",
     "States": {
-      "ProcessRecords": {
-        "Type": "Map",
-        "ItemsPath": "$.records",
-        "MaxConcurrency": 2,
-        "Iterator": {
-          "StartAt": "FirstLambda",
-          "States": {
-            "FirstLambda": {
-              "Type": "Task",
-              "Resource": "arn:aws:lambda:us-east-1:460188324144:function:first_lambda_function",
-              "Retry": [
-                {
-                  "ErrorEquals": ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.TooManyRequestsException"],
-                  "IntervalSeconds": 2,
-                  "MaxAttempts": 2,
-                  "BackoffRate": 2
-                }
-              ],
-              "ResultPath": "$.firstLambdaResult",
-              "Next": "SecondLambda"
-            },
-            "SecondLambda": {
-              "Type": "Task",
-              "Resource": "arn:aws:lambda:us-east-1:460188324144:function:second_lambda_function",
-              "Parameters": {
-                "firstLambdaOutput.$": "$.firstLambdaResult"  // Pass the entire output of the first Lambda as input
-              },
-              "Retry": [
-                {
-                  "ErrorEquals": ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.TooManyRequestsException"],
-                  "IntervalSeconds": 2,
-                  "MaxAttempts": 2,
-                  "BackoffRate": 2
-                }
-              ],
-              "End": true
-            }
-          }
+      "FirstLambda": {
+        "Type": "Task",
+        "Resource": "arn:aws:lambda:us-east-1:460188324144:function:first_lambda_function",
+        "ResultPath": "$.firstLambdaResult",
+        "Parameters": {
+          "Payload.$": "$"
+        },
+        "Next": "SecondLambda"
+      },
+      "SecondLambda": {
+        "Type": "Task",
+        "Resource": "arn:aws:lambda:us-east-1:460188324144:function:second_lambda_function",
+        "InputPath": "$.firstLambdaResult",
+        "Parameters": {
+          "Payload.$": "$.firstLambdaResult"
         },
         "End": true
       }
