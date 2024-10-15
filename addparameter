@@ -1,5 +1,54 @@
- "Parameters": {
-          "Payload": {
-            "question": "What are our termination rights?"
+resource "aws_sfn_state_machine" "ssre_pipeline" {
+  name     = "SSRE_Contract_Ingestion_Pipeline"
+  role_arn = aws_iam_role.step_function_role.arn
+
+  definition = <<DEFINITION
+  {
+    "Comment": "Example SSRE Contract Ingestion Pipeline with two Lambda functions",
+    "StartAt": "ProcessRecords",
+    "States": {
+      "ProcessRecords": {
+        "Type": "Map",
+        "ItemsPath": "$.records",
+        "MaxConcurrency": 2,
+        "Iterator": {
+          "StartAt": "FirstLambda",
+          "States": {
+            "FirstLambda": {
+              "Type": "Task",
+              "Resource": "arn:aws:lambda:us-east-1:460188324144:function:first_lambda_function",
+              "Retry": [
+                {
+                  "ErrorEquals": ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.TooManyRequestsException"],
+                  "IntervalSeconds": 2,
+                  "MaxAttempts": 2,
+                  "BackoffRate": 2
+                }
+              ],
+              "ResultPath": "$.firstLambdaResult",
+              "Next": "SecondLambda"
+            },
+            "SecondLambda": {
+              "Type": "Task",
+              "Resource": "arn:aws:lambda:us-east-1:460188324144:function:second_lambda_function",
+              "Parameters": {
+                "firstLambdaOutput.$": "$.firstLambdaResult"  // Pass the entire output of the first Lambda as input
+              },
+              "Retry": [
+                {
+                  "ErrorEquals": ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.TooManyRequestsException"],
+                  "IntervalSeconds": 2,
+                  "MaxAttempts": 2,
+                  "BackoffRate": 2
+                }
+              ],
+              "End": true
+            }
           }
         },
+        "End": true
+      }
+    }
+  }
+  DEFINITION
+}
