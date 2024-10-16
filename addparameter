@@ -75,3 +75,17 @@ resource "aws_sfn_state_machine" "ssre_pipeline" {
   }
   DEFINITION
 }
+
+
+statement {
+  sid     = "StepFunctions"
+  effect  = "Allow"
+  actions = [
+    "states:StartExecution",
+    "states:DescribeExecution",
+    "states:ListExecutions"
+  ]
+  resources = [
+    "arn:aws:states:us-east-1:460188324144:stateMachine:SSRE_Contract_Ingestion_Pipeline"
+  ]
+}
