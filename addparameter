@@ -89,3 +89,22 @@ statement {
     "arn:aws:states:us-east-1:460188324144:stateMachine:SSRE_Contract_Ingestion_Pipeline"
   ]
 }
+--------------------------------------
+statement {
+  sid     = "StepFunctionsPermissions"
+  effect  = "Allow"
+  actions = [
+    "states:StartExecution",
+    "states:StopExecution",
+    "states:DescribeExecution",
+    "states:GetExecutionHistory",
+    "states:ListExecutions",
+    "states:UpdateStateMachine",
+    "states:DeleteStateMachine",
+    "states:ListStateMachines"
+  ]
+  resources = [
+    "arn:aws:states:us-east-1:460188324144:stateMachine:SSRE_Contract_Ingestion_Pipeline",
+    "arn:aws:states:us-east-1:460188324144:execution:SSRE_Contract_Ingestion_Pipeline:*"
+  ]
+}
