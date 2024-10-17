@@ -1,0 +1,23 @@
+provider "aws" {
+  region = "us-east-1"  # Specify your region
+}
+
+resource "aws_cloudwatch_event_rule" "every_15_min" {
+  name        = "every-15-min"
+  description = "Triggers the Lambda function every 15 minutes"
+  schedule_expression = "rate(15 minutes)"
+}
+
+resource "aws_cloudwatch_event_target" "lambda_target" {
+  rule      = aws_cloudwatch_event_rule.every_15_min.name
+  target_id = "lambda-function"
+  arn       = "arn:aws:lambda:us-east-1:123456789012:function:your-lambda-function"  # Replace with your Lambda function ARN
+}
+
+resource "aws_lambda_permission" "allow_eventbridge" {
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = "your-lambda-function"  # Replace with your Lambda function name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.every_15_min.arn
+}
